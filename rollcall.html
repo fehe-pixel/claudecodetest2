@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>课堂点名预测 Agent</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #238636;
+    --accent-hover: #2ea043;
+    --blue: #1f6feb;
+    --blue-light: #388bfd;
+    --red: #da3633;
+    --yellow: #d29922;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; }
+
+  /* ── Config bar ─────────────────────────────────────────────────────────── */
+  .sem-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sem-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .sem-label {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    width: 120px;
+    flex-shrink: 0;
+  }
+  .sem-divider { height: 1px; background: var(--border); }
+  .sem-bar input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 0.83rem;
+    outline: none;
+    width: 130px;
+  }
+  .sem-bar input[type="date"]:focus { border-color: var(--blue-light); }
+  .sem-hint { color: var(--blue-light); font-size: 0.78rem; }
+  .sem-hint.warn { color: var(--yellow); }
+
+  /* ── Day-of-week toggles ─────────────────────────────────────────────────── */
+  .day-toggles { display: flex; gap: 5px; flex-wrap: wrap; }
+  .day-btn {
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .day-btn:hover  { border-color: var(--blue); color: var(--text); }
+  .day-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 700; }
+
+  /* ── Layout ──────────────────────────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card-title {
+    font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px;
+  }
+
+  label { display: block; font-size: 0.88rem; color: var(--text-muted); margin-bottom: 5px; margin-top: 12px; }
+  label:first-of-type { margin-top: 0; }
+
+  select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 0.9rem;
+    outline: none; transition: border-color 0.15s;
+  }
+  select:focus { border-color: var(--blue-light); }
+  select option { background: var(--surface2); }
+
+  /* ── Custom date field ───────────────────────────────────────────────────── */
+  .date-field {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 0.9rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    user-select: none; transition: border-color 0.15s; min-height: 38px;
+  }
+  .date-field:hover  { border-color: var(--blue-light); }
+  .date-field.active { border-color: var(--blue-light); box-shadow: 0 0 0 2px rgba(56,139,253,0.15); }
+  .date-field .ph    { color: var(--text-muted); }
+  .date-icon         { font-size: 0.9rem; opacity: 0.6; }
+
+  .week-badge { font-size: 0.78rem; color: var(--blue-light); margin-top: 5px; min-height: 14px; font-weight: 500; }
+  .week-badge.warn { color: var(--yellow); }
+
+  /* ── Calendar popup ──────────────────────────────────────────────────────── */
+  .cal-popup {
+    position: fixed; z-index: 9999;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+    width: 252px; animation: cal-in 0.12s ease;
+  }
+  @keyframes cal-in { from { opacity:0; transform:translateY(-6px) scale(0.98); } to { opacity:1; transform:none; } }
+  .cal-popup.hidden { display: none; }
+
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-nav {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); cursor: pointer; width: 30px; height: 30px; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center; transition: background 0.1s; line-height: 1;
+  }
+  .cal-nav:hover { background: var(--border); }
+  .cal-month-label { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
+  .cal-weekdays span { text-align: center; font-size: 0.7rem; color: var(--text-muted); padding: 3px 0; font-weight: 600; }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+  .cal-day {
+    text-align: center; padding: 6px 0; font-size: 0.82rem; border-radius: 5px;
+    cursor: pointer; transition: background 0.1s, color 0.1s; line-height: 1;
+  }
+  .cal-day:hover:not(.cal-other):not(.cal-no-class) { background: var(--surface2); }
+  .cal-day.cal-other    { color: var(--border); cursor: default; }
+  /* Non-class days: strikethrough dimmed text, not clickable */
+  .cal-day.cal-no-class {
+    color: var(--border);
+    cursor: not-allowed;
+    position: relative;
+  }
+  .cal-day.cal-no-class::before {
+    content: '';
+    position: absolute;
+    left: 15%; right: 15%;
+    top: 50%; height: 1px;
+    background: var(--border);
+    opacity: 0.6;
+  }
+  .cal-day.cal-today { color: var(--blue-light); font-weight: 700; position: relative; }
+  .cal-day.cal-today::after {
+    content: ''; display: block; width: 4px; height: 4px;
+    border-radius: 50%; background: var(--blue-light); margin: 2px auto 0;
+  }
+  .cal-day.cal-selected { background: var(--blue); color: #fff; font-weight: 700; }
+  .cal-day.cal-selected:hover { background: var(--blue-light); }
+  .cal-day.cal-selected.cal-today::after { background: rgba(255,255,255,0.7); }
+  .cal-day.cal-disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .cal-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .cal-legend { font-size: 0.72rem; color: var(--text-muted); }
+  .cal-today-btn {
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text-muted); font-size: 0.78rem; cursor: pointer; padding: 3px 8px;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .cal-today-btn:hover { color: var(--text); border-color: var(--text-muted); }
+  .cal-close-btn { background: none; border: none; color: var(--text-muted); font-size: 0.78rem; cursor: pointer; }
+  .cal-close-btn:hover { color: var(--text); }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+    border-radius: 6px; border: none; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-green { background: var(--accent); color: #fff; }
+  .btn-green:hover { background: var(--accent-hover); }
+  .btn-blue  { background: var(--blue); color: #fff; }
+  .btn-blue:hover  { background: var(--blue-light); }
+  .btn-red   { background: transparent; color: var(--red); border: 1px solid var(--red); padding: 4px 8px; font-size: 0.8rem; }
+  .btn-red:hover   { background: rgba(218,54,51,0.1); }
+
+  /* ── History form ────────────────────────────────────────────────────────── */
+  .history-form { display: grid; grid-template-columns: 200px max-content; gap: 8px; align-items: start; margin-bottom: 16px; }
+  @media (max-width: 700px) {
+    .history-form { grid-template-columns: 1fr; }
+  }
+  .history-form label { margin-top: 0; }
+  .btn-wrap { display: flex; flex-direction: column; }
+  .btn-wrap label { visibility: hidden; }
+
+  /* ── Table ───────────────────────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { color: var(--text-muted); font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+  .badge-yes { background: rgba(35,134,54,0.2);    color: #56d364; }
+  .badge-no  { background: rgba(139,148,158,0.15); color: var(--text-muted); }
+
+  /* ── Result ──────────────────────────────────────────────────────────────── */
+  #result-area { margin-top: 24px; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+
+  .prob-display { display: flex; align-items: center; gap: 24px; margin: 20px 0; }
+  @media (max-width: 550px) { .prob-display { flex-direction: column; align-items: flex-start; } }
+  .prob-circle { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .prob-circle svg { transform: rotate(-90deg); }
+  .prob-circle .track { fill: none; stroke: var(--surface2); stroke-width: 10; }
+  .prob-circle .arc   { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 0.6s cubic-bezier(.4,0,.2,1), stroke 0.4s; }
+  .prob-number {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-size: 1.55rem; font-weight: 800; line-height: 1;
+  }
+  .prob-number span { font-size: 0.7rem; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+
+  .factors { flex: 1; display: flex; flex-direction: column; gap: 9px; width: 100%; }
+  .factor-row { display: flex; align-items: center; gap: 10px; font-size: 0.84rem; }
+  .factor-label { color: var(--text-muted); width: 110px; flex-shrink: 0; }
+  .factor-bar-wrap { flex: 1; height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .factor-bar  { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .factor-val  { width: 38px; text-align: right; font-weight: 600; font-size: 0.82rem; }
+
+  .verdict { padding: 12px 16px; border-radius: 6px; font-size: 0.9rem; font-weight: 500; margin-top: 16px; border-left: 3px solid; }
+  .verdict-high   { background: rgba(218,54,51,0.1);  border-color: var(--red);    color: #f85149; }
+  .verdict-medium { background: rgba(210,153,34,0.1); border-color: var(--yellow); color: #e3b341; }
+  .verdict-low    { background: rgba(35,134,54,0.1);  border-color: var(--accent); color: #56d364; }
+
+  .detail-section { margin-top: 20px; }
+  .detail-section h4 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; }
+  .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
+  .stat-box { background: var(--surface2); border-radius: 6px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 1.2rem; font-weight: 700; }
+  .stat-lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+  .empty-state { color: var(--text-muted); font-size: 0.88rem; padding: 20px 0; text-align: center; }
+  .tip { background: rgba(31,111,235,0.08); border: 1px solid rgba(31,111,235,0.25); border-radius: 6px; padding: 10px 14px; font-size: 0.82rem; color: #388bfd; margin-top: 12px; }
+  .section-gap { margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🎲 课堂点名预测 Agent</h1>
+  <p class="subtitle">输入历史点名记录，AI 分析规律，预测下节课被点名概率</p>
+
+  <!-- Config bar -->
+  <div class="sem-bar">
+    <div class="sem-row">
+      <span class="sem-label">📅 开学日期</span>
+      <input type="date" id="sem-start" value="2026-03-01" onchange="onSemStartChange(this.value)">
+      <span class="sem-hint" id="sem-hint"></span>
+    </div>
+    <div class="sem-divider"></div>
+    <div class="sem-row">
+      <span class="sem-label">📆 上课时间</span>
+      <div class="day-toggles" id="day-toggles">
+        <button class="day-btn" data-day="1" onclick="toggleClassDay(1)">周一</button>
+        <button class="day-btn" data-day="2" onclick="toggleClassDay(2)">周二</button>
+        <button class="day-btn" data-day="3" onclick="toggleClassDay(3)">周三</button>
+        <button class="day-btn" data-day="4" onclick="toggleClassDay(4)">周四</button>
+        <button class="day-btn" data-day="5" onclick="toggleClassDay(5)">周五</button>
+        <button class="day-btn" data-day="6" onclick="toggleClassDay(6)">周六</button>
+        <button class="day-btn" data-day="0" onclick="toggleClassDay(0)">周日</button>
+      </div>
+      <span class="sem-hint" id="classdays-hint">未选则不限制日期</span>
+    </div>
+  </div>
+
+  <!-- History Input -->
+  <div class="card">
+    <div class="card-title">📋 历史点名记录</div>
+    <div class="history-form">
+      <div>
+        <label>点名日期</label>
+        <div class="date-field" id="h-date-field" onclick="openCal('h', this)">
+          <span id="h-date-display" class="ph">选择点名日期</span>
+          <span class="date-icon">📅</span>
+        </div>
+        <input type="hidden" id="h-date">
+        <div class="week-badge" id="h-week-badge"></div>
+      </div>
+      <div class="btn-wrap">
+        <label>&nbsp;</label>
+        <button class="btn btn-green" onclick="addRecord()">＋ 添加点名记录</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>日期</th><th>周次</th><th>星期</th><th>点名</th><th>操作</th></tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="5" class="empty-state">暂无记录，请先配置上课星期再添加点名日期</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tip">💡 请录入开学至今每次课的点名情况（全部课次），缺少记录会影响预测精度。</div>
+  </div>
+
+  <!-- Predict Input -->
+  <div class="card section-gap">
+    <div class="card-title">🔮 预测下节课</div>
+    <div class="grid-2">
+      <div>
+        <label>下节课日期（自动计算）</label>
+        <div id="next-class-display" class="week-badge" style="font-size:0.95rem;padding:9px 0;min-height:38px;display:flex;align-items:center;"></div>
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn btn-blue" style="width:100%;justify-content:center;padding:10px" onclick="predict()">
+          ⚡ 开始预测
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result-area"></div>
+
+</div>
+
+<!-- Calendar Popup (shared) -->
+<div id="cal-popup" class="cal-popup hidden">
+  <div class="cal-header">
+    <button class="cal-nav" onclick="calNav(-1)">‹</button>
+    <span class="cal-month-label" id="cal-title"></span>
+    <button class="cal-nav" onclick="calNav(1)">›</button>
+  </div>
+  <div class="cal-weekdays">
+    <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+  </div>
+  <div id="cal-grid" class="cal-grid"></div>
+  <div class="cal-footer">
+    <button class="cal-today-btn" onclick="calGoToday()">回到今天</button>
+    <span class="cal-legend" id="cal-legend"></span>
+    <button class="cal-close-btn" onclick="closeCal()">关闭 ✕</button>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let records       = [];
+  let rolledDates   = new Set(); // date strings where roll call happened
+  let semesterStart = '2026-03-01';
+  let classWeekdays = new Set(); // 0=Sun … 6=Sat; empty = no restriction
+
+  const WEEKDAYS  = ['周日','周一','周二','周三','周四','周五','周六'];
+  const MONTHS_ZH = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
+  // ── Calendar state ─────────────────────────────────────────────────────────
+  let calTarget = null;
+  let calYear, calMonth;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function calcWeek(dateStr) {
+    if (!dateStr || !semesterStart) return null;
+    const diff = Math.floor(
+      (new Date(dateStr + 'T00:00:00') - new Date(semesterStart + 'T00:00:00'))
+      / (7 * 86400000)
+    );
+    return diff >= 0 ? diff + 1 : null;
+  }
+
+  // ── Class-day helpers ──────────────────────────────────────────────────────
+  // 1-based rank of weekday among sorted class days (null if not a class day or no schedule set)
+  function getClassPosition(weekday) {
+    if (!classWeekdays.size) return null;
+    const sorted = [...classWeekdays].sort((a, b) => a - b);
+    const idx    = sorted.indexOf(weekday);
+    return idx >= 0 ? idx + 1 : null;
+  }
+
+  // Days since the previous scheduled class day before dateStr (null if no schedule)
+  function getPrevClassGapDays(dateStr) {
+    if (!classWeekdays.size) return null;
+    const d = new Date(dateStr + 'T00:00:00');
+    for (let i = 1; i <= 14; i++) {
+      if (classWeekdays.has(new Date(d - i * 86400000).getDay())) return i;
+    }
+    return null;
+  }
+
+  // ── Config handlers ────────────────────────────────────────────────────────
+  function onSemStartChange(val) {
+    semesterStart = val;
+    const d = val ? new Date(val + 'T00:00:00') : null;
+    document.getElementById('sem-hint').textContent = d
+      ? `（${WEEKDAYS[d.getDay()]}，今天 = 第 ${calcWeek(todayStr()) ?? '?'} 周）` : '';
+    refreshWeekBadge('h');
+    rebuildRecords();
+    refreshNextClassDisplay();
+  }
+
+  function toggleClassDay(day) {
+    if (classWeekdays.has(day)) classWeekdays.delete(day);
+    else                         classWeekdays.add(day);
+
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.classList.toggle('active', classWeekdays.has(parseInt(btn.dataset.day)));
+    });
+
+    // Update legend hint
+    const hint = document.getElementById('classdays-hint');
+    if (classWeekdays.size === 0) {
+      hint.textContent = '未选则不限制日期';
+      hint.className = 'sem-hint';
+    } else {
+      const sorted = [...classWeekdays].sort((a,b) => a-b).map(d => WEEKDAYS[d]);
+      hint.textContent = `每周上课：${sorted.join('、')}`;
+      hint.className = 'sem-hint';
+    }
+
+    // Invalidate any selected dates that are now non-class days
+    ['h'].forEach(t => {
+      const dateStr = document.getElementById(t + '-date').value;
+      if (dateStr && classWeekdays.size > 0) {
+        const wd = new Date(dateStr + 'T00:00:00').getDay();
+        if (!classWeekdays.has(wd)) clearDateField(t);
+      }
+    });
+
+    rebuildRecords();
+    refreshNextClassDisplay();
+  }
+
+  // ── Week badge ─────────────────────────────────────────────────────────────
+  function refreshWeekBadge(target) {
+    const dateStr = document.getElementById(target + '-date').value;
+    const badge   = document.getElementById(target + '-week-badge');
+    if (!dateStr) { badge.textContent = ''; return; }
+    const week = calcWeek(dateStr);
+    const d    = new Date(dateStr + 'T00:00:00');
+    if (week !== null) {
+      const posStr = classWeekdays.size
+        ? `  第 ${getClassPosition(d.getDay()) ?? '?'} 节课` : '';
+      badge.textContent = `→ 第 ${week} 周  ${WEEKDAYS[d.getDay()]}${posStr}`;
+      badge.className = 'week-badge';
+    } else {
+      badge.textContent = '⚠ 早于开学日期';
+      badge.className = 'week-badge warn';
+    }
+  }
+
+  function clearDateField(target) {
+    document.getElementById(target + '-date').value = '';
+    const disp = document.getElementById(target + '-date-display');
+    disp.textContent = '选择日期';
+    disp.classList.add('ph');
+    document.getElementById(target + '-week-badge').textContent = '';
+  }
+
+  // ── Custom calendar ────────────────────────────────────────────────────────
+  function openCal(target, triggerEl) {
+    calTarget = target;
+    const val = document.getElementById(target + '-date').value;
+    const ref = val ? new Date(val + 'T00:00:00') : new Date();
+    calYear  = ref.getFullYear();
+    calMonth = ref.getMonth();
+    positionCal(triggerEl);
+    calRender();
+    document.getElementById('cal-popup').classList.remove('hidden');
+    document.querySelectorAll('.date-field').forEach(f => f.classList.remove('active'));
+    triggerEl.classList.add('active');
+    // Show legend when class days are configured
+    document.getElementById('cal-legend').textContent =
+      classWeekdays.size ? '─ 非上课日' : '';
+  }
+
+  function positionCal(triggerEl) {
+    const popup = document.getElementById('cal-popup');
+    const rect  = triggerEl.getBoundingClientRect();
+    const PW = 252, PH = 295;
+    let top  = rect.bottom + window.scrollY + 4;
+    let left = rect.left   + window.scrollX;
+    if (left + PW > window.innerWidth  - 8) left = window.innerWidth  - PW - 8;
+    if (rect.bottom + PH > window.innerHeight) top = rect.top + window.scrollY - PH - 4;
+    popup.style.top  = top  + 'px';
+    popup.style.left = left + 'px';
+  }
+
+  function closeCal() {
+    document.getElementById('cal-popup').classList.add('hidden');
+    document.querySelectorAll('.date-field').forEach(f => f.classList.remove('active'));
+    calTarget = null;
+  }
+
+  function calNav(dir) {
+    calMonth += dir;
+    if (calMonth < 0)  { calMonth = 11; calYear--; }
+    if (calMonth > 11) { calMonth = 0;  calYear++; }
+    calRender();
+  }
+
+  function calGoToday() {
+    const t = new Date();
+    calYear = t.getFullYear(); calMonth = t.getMonth();
+    calRender();
+  }
+
+  function calRender() {
+    document.getElementById('cal-title').textContent = `${calYear}年 ${MONTHS_ZH[calMonth]}`;
+
+    const today       = todayStr();
+    const selectedVal = calTarget ? document.getElementById(calTarget + '-date').value : '';
+    const firstWday   = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
+
+    const cells = [];
+    const prevM = calMonth === 0 ? 12 : calMonth;
+    const prevY = calMonth === 0 ? calYear - 1 : calYear;
+    for (let i = firstWday - 1; i >= 0; i--) {
+      const d = daysInPrev - i;
+      cells.push({ day: d, other: true, dateStr: `${prevY}-${pad(prevM)}-${pad(d)}` });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push({ day: d, other: false, dateStr: `${calYear}-${pad(calMonth+1)}-${pad(d)}` });
+    }
+    const nextM = calMonth === 11 ? 1 : calMonth + 2;
+    const nextY = calMonth === 11 ? calYear + 1 : calYear;
+    for (let d = 1; cells.length < 42; d++) {
+      cells.push({ day: d, other: true, dateStr: `${nextY}-${pad(nextM)}-${pad(d)}` });
+    }
+
+    document.getElementById('cal-grid').innerHTML = cells.map(c => {
+      const wday     = new Date(c.dateStr + 'T00:00:00').getDay();
+      const noClass  = !c.other && classWeekdays.size > 0 && !classWeekdays.has(wday);
+      const isFuture = calTarget === 'h' && !c.other && c.dateStr > today;
+      let cls = 'cal-day';
+      if      (c.other)   cls += ' cal-other';
+      else if (noClass)   cls += ' cal-no-class';
+      else if (isFuture)  cls += ' cal-disabled';
+      if (!c.other && !noClass && !isFuture && c.dateStr === today)       cls += ' cal-today';
+      if (!c.other && !noClass && !isFuture && c.dateStr === selectedVal) cls += ' cal-selected';
+      const click = (!c.other && !noClass && !isFuture) ? `onclick="calSelect('${c.dateStr}')"` : '';
+      return `<div class="${cls}" ${click}>${c.day}</div>`;
+    }).join('');
+  }
+
+  function calSelect(dateStr) {
+    if (!calTarget) return;
+    const d = new Date(dateStr + 'T00:00:00');
+    document.getElementById(calTarget + '-date').value = dateStr;
+    const dispEl = document.getElementById(calTarget + '-date-display');
+    dispEl.textContent = `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+    dispEl.classList.remove('ph');
+    refreshWeekBadge(calTarget);
+    closeCal();
+  }
+
+  document.addEventListener('click', e => {
+    const popup = document.getElementById('cal-popup');
+    if (!popup.classList.contains('hidden') &&
+        !e.target.closest('#cal-popup') &&
+        !e.target.closest('.date-field')) closeCal();
+  });
+  document.addEventListener('scroll', () => { if (calTarget) closeCal(); }, true);
+
+  // ── Records ────────────────────────────────────────────────────────────────
+  function rebuildRecords() {
+    if (!semesterStart || !classWeekdays.size) { records = []; renderTable(); return; }
+    const today = todayStr();
+    records = [];
+    const d = new Date(semesterStart + 'T00:00:00');
+    const end = new Date(today + 'T00:00:00');
+    while (d <= end) {
+      if (classWeekdays.has(d.getDay())) {
+        const dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        records.push({ id: dateStr, date: dateStr, week: calcWeek(dateStr), weekday: d.getDay(), called: rolledDates.has(dateStr) ? 1 : 0 });
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    renderTable();
+  }
+
+  function addRecord() {
+    const date = document.getElementById('h-date').value;
+    if (!date) { alert('请先选择日期'); return; }
+    if (!calcWeek(date)) { alert('所选日期早于开学日期，请检查设置'); return; }
+    if (classWeekdays.size > 0 && !classWeekdays.has(new Date(date + 'T00:00:00').getDay())) {
+      alert('所选日期不是上课日，请选择配置的上课星期'); return;
+    }
+    if (rolledDates.has(date)) { alert('该日期已记录为点名'); return; }
+    rolledDates.add(date);
+    rebuildRecords();
+    clearDateField('h');
+  }
+
+  function deleteRecord(id) {
+    rolledDates.delete(id);
+    rebuildRecords();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('history-body');
+    if (!records.length) {
+      const msg = classWeekdays.size ? '暂无记录，请添加点名日期' : '请先在上方配置每周上课的星期';
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${msg}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = records.map(r => `
+      <tr>
+        <td>${r.date.replace(/-/g,'/')}</td>
+        <td>第 ${r.week} 周</td>
+        <td>${WEEKDAYS[r.weekday]}</td>
+        <td><span class="badge ${r.called ? 'badge-yes':'badge-no'}">${r.called ? '✅ 点名':'❌ 未点名'}</span></td>
+        <td>${r.called ? `<button class="btn btn-red" onclick="deleteRecord('${r.id}')">删除</button>` : ''}</td>
+      </tr>`).join('');
+  }
+
+  // ── Prediction engine ──────────────────────────────────────────────────────
+  function logit(p)   { return Math.log(p / (1 - p)); }
+  function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function conditionalRate(subset) {
+    if (!subset.length) return null;
+    return subset.filter(r => r.called).length / subset.length;
+  }
+
+  function getNextClassDate() {
+    if (!classWeekdays.size) return null;
+    const base = new Date(todayStr() + 'T00:00:00');
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      if (classWeekdays.has(d.getDay()))
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+    return null;
+  }
+
+  function refreshNextClassDisplay() {
+    const el = document.getElementById('next-class-display');
+    if (!el) return;
+    const dateStr = getNextClassDate();
+    if (!dateStr) {
+      el.textContent = '请先在上方配置每周上课的星期';
+      el.className = 'week-badge warn';
+      el.style.cssText = 'font-size:0.95rem;padding:9px 0;min-height:38px;display:flex;align-items:center;';
+    } else {
+      const d = new Date(dateStr + 'T00:00:00');
+      const week = calcWeek(dateStr);
+      el.textContent = `${dateStr}（第 ${week} 周 ${WEEKDAYS[d.getDay()]}）`;
+      el.className = 'week-badge';
+      el.style.cssText = 'font-size:0.95rem;padding:9px 0;min-height:38px;display:flex;align-items:center;';
+    }
+  }
+
+  function predict() {
+    const dateStr = getNextClassDate();
+    if (!dateStr) { alert('请先在上方配置每周上课的星期，以便自动计算下节课日期'); return; }
+    const week    = calcWeek(dateStr);
+    if (!week) { alert('所选日期早于开学日期，请检查设置'); return; }
+    const weekday = new Date(dateStr + 'T00:00:00').getDay();
+
+    if (records.length === 0) { renderResult(null, week, weekday, dateStr, null); return; }
+
+    const n        = records.length;
+    const baseRate = conditionalRate(records);
+
+    // ① Same weekday
+    const byDay   = records.filter(r => r.weekday === weekday);
+    const dayRate = conditionalRate(byDay) ?? baseRate;
+
+    // ② Recency — exponential decay over last 6 sessions
+    const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+    const recent = sorted.slice(0, Math.min(6, n));
+    let recentSum = 0, recentW = 0;
+    recent.forEach((r, i) => { const w = Math.exp(-0.4*i); recentSum += r.called*w; recentW += w; });
+    const recentRate = recentW > 0 ? recentSum / recentW : baseRate;
+
+    // ③ Semester-position boost (early / final weeks)
+    const maxWeek  = Math.max(...records.map(r => r.week), week);
+    const semBoost = (week <= 3 || week >= maxWeek - 2) ? 0.08 : 0;
+
+    // ④ CLASS SCHEDULE: within-week position factor
+    let posRate = null, classPosIdx = null, posSamples = 0;
+    if (classWeekdays.size > 0) {
+      classPosIdx = getClassPosition(weekday);
+      if (classPosIdx !== null) {
+        const byPos = records.filter(r =>
+          classWeekdays.has(r.weekday) && getClassPosition(r.weekday) === classPosIdx
+        );
+        posSamples = byPos.length;
+        posRate    = conditionalRate(byPos);
+      }
+    }
+
+    // ⑤ CLASS SCHEDULE: gap since previous class (post-break boost)
+    const gap      = getPrevClassGapDays(dateStr);
+    const gapBoost = gap === null ? 0 : gap > 7 ? 0.10 : gap > 4 ? 0.06 : 0;
+
+    // ── Log-odds fusion ──────────────────────────────────────────────────────
+    const eps  = 0.01;
+    const safe = v => clamp(v, eps, 1 - eps);
+    let wSum = 0.5*logit(safe(baseRate)) + 1.2*logit(safe(dayRate)) + 1.8*logit(safe(recentRate));
+    let wTot = 0.5 + 1.2 + 1.8;
+    if (posRate !== null) { wSum += 1.3 * logit(safe(posRate)); wTot += 1.3; }
+
+    const prob = clamp(sigmoid(wSum / wTot) + semBoost + gapBoost, 0.02, 0.98);
+
+    renderResult(prob, week, weekday, dateStr, {
+      base: baseRate, day: dayRate, recent: recentRate,
+      daySamples: byDay.length,
+      position: posRate, classPosIdx, posSamples,
+      gap, gapBoost,
+    });
+  }
+
+  // ── Render result ──────────────────────────────────────────────────────────
+  function renderResult(prob, week, weekday, dateStr, f) {
+    const area = document.getElementById('result-area');
+    if (prob === null) {
+      area.innerHTML = `<div class="result-card"><div class="empty-state">⚠️ 暂无历史数据，无法预测。请先添加至少 1 条点名记录。</div></div>`;
+      return;
+    }
+
+    const pct   = Math.round(prob * 100);
+    const circ  = 2 * Math.PI * 45;
+    const color = pct >= 65 ? '#f85149' : pct >= 35 ? '#e3b341' : '#56d364';
+
+    // Verdict text — include gap info when relevant
+    let gapNote = '';
+    if (f.gap !== null && f.gapBoost > 0) {
+      gapNote = `距上次上课已 <strong>${f.gap} 天</strong>，长假后点名概率上升。`;
+    }
+    let verdict, vClass;
+    if (pct >= 65) {
+      verdict = `⚠️ 高风险！${gapNote}预测下节课 <strong>很可能点名</strong>，建议提前预习、不要旷课。`;
+      vClass = 'verdict-high';
+    } else if (pct >= 35) {
+      verdict = `🤔 中等风险。${gapNote}老师 <strong>有可能点名</strong>，建议按时出勤。`;
+      vClass = 'verdict-medium';
+    } else {
+      verdict = `😊 低风险。${gapNote}预测下节课 <strong>点名概率较低</strong>，但仍建议正常出勤。`;
+      vClass = 'verdict-low';
+    }
+
+    const fmtP = v => `${Math.round(v * 100)}%`;
+    const barC = v => v >= 0.65 ? '#f85149' : v >= 0.35 ? '#e3b341' : '#56d364';
+
+    // Build factor rows dynamically — add position row only if available
+    const factorDefs = [
+      ['整体概率', f.base,   records.length,           '条记录'],
+      ['同星期',   f.day,    f.daySamples,              '条同日记录'],
+      ['近期趋势', f.recent, Math.min(6,records.length),'条近期记录'],
+    ];
+    if (f.position !== null && f.position !== undefined) {
+      const posLabel = f.classPosIdx !== null ? `周内第${f.classPosIdx}节` : '课程位置';
+      factorDefs.push([posLabel, f.position, f.posSamples, '条同位记录']);
+    }
+
+    const factorHTML = `<div class="factors">${
+      factorDefs.map(([lbl, val, cnt, unit]) => `
+        <div class="factor-row">
+          <span class="factor-label">${lbl}</span>
+          <div class="factor-bar-wrap">
+            <div class="factor-bar" style="width:${Math.round(val*100)}%;background:${barC(val)}"></div>
+          </div>
+          <span class="factor-val" style="color:${barC(val)}">${fmtP(val)}</span>
+          <span style="font-size:0.74rem;color:var(--text-muted);white-space:nowrap">${cnt} ${unit}</span>
+        </div>`).join('')
+    }</div>`;
+
+    const totalCalls = records.filter(r => r.called).length;
+    const longestStreak = (() => {
+      let max = 0, cur = 0;
+      records.forEach(r => { cur = r.called ? cur+1 : 0; max = Math.max(max, cur); });
+      return max;
+    })();
+    const recentNoCall = (() => {
+      let cur = 0;
+      for (let i = records.length - 1; i >= 0; i--) {
+        if (!records[i].called) cur++; else break;
+      }
+      return cur;
+    })();
+
+    const classPosText = (f.classPosIdx !== null)
+      ? `<div class="stat-box"><div class="stat-val">${f.classPosIdx}</div><div class="stat-lbl">周内第几节课</div></div>`
+      : `<div class="stat-box"><div class="stat-val">${f.gap ?? '—'} 天</div><div class="stat-lbl">距上次上课</div></div>`;
+
+    area.innerHTML = `
+      <div class="result-card section-gap">
+        <div class="card-title">🎯 预测结果 — 第 ${week} 周 ${WEEKDAYS[weekday]} ${dateStr}</div>
+        <div class="prob-display">
+          <div class="prob-circle">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle class="track" cx="55" cy="55" r="45"/>
+              <circle class="arc" cx="55" cy="55" r="45"
+                stroke="${color}"
+                stroke-dasharray="${(prob*circ).toFixed(1)} ${circ.toFixed(1)}"
+                stroke-dashoffset="0"/>
+            </svg>
+            <div class="prob-number" style="color:${color}">${pct}%<span>点名概率</span></div>
+          </div>
+          ${factorHTML}
+        </div>
+        <div class="verdict ${vClass}">${verdict}</div>
+        <div class="detail-section">
+          <h4>历史数据概览（共 ${records.length} 条）</h4>
+          <div class="detail-grid">
+            <div class="stat-box">
+              <div class="stat-val" style="color:#56d364">${Math.round(f.base*100)}%</div>
+              <div class="stat-lbl">总体点名率</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val">${totalCalls} / ${records.length}</div>
+              <div class="stat-lbl">点名次数</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val">${longestStreak}</div>
+              <div class="stat-lbl">最长连续点名</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val">${recentNoCall}</div>
+              <div class="stat-lbl">近期连续未点名</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val">${Math.round(f.day*100)}%</div>
+              <div class="stat-lbl">${WEEKDAYS[weekday]} 点名率</div>
+            </div>
+            ${classPosText}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  onSemStartChange(semesterStart);
+</script>
+</body>
+</html>
