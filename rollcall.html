@@ -179,6 +179,8 @@
   .cal-day.cal-selected { background: var(--blue); color: #fff; font-weight: 700; }
   .cal-day.cal-selected:hover { background: var(--blue-light); }
   .cal-day.cal-selected.cal-today::after { background: rgba(255,255,255,0.7); }
+  .cal-day.cal-multi-sel { background: rgba(35,134,54,0.25); color: #56d364; font-weight: 700; border-radius: 5px; }
+  .cal-day.cal-multi-sel:hover { background: rgba(35,134,54,0.45); }
   .cal-day.cal-disabled { opacity: 0.3; cursor: not-allowed; }
 
   .cal-footer {
@@ -267,6 +269,86 @@
   .empty-state { color: var(--text-muted); font-size: 0.88rem; padding: 20px 0; text-align: center; }
   .tip { background: rgba(31,111,235,0.08); border: 1px solid rgba(31,111,235,0.25); border-radius: 6px; padding: 10px 14px; font-size: 0.82rem; color: #388bfd; margin-top: 12px; }
   .section-gap { margin-top: 24px; }
+
+  /* ── AI Card ─────────────────────────────────────────────────────────────── */
+  .ai-text-panel { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .ai-text-content { font-size: 0.88rem; line-height: 1.75; color: var(--text); }
+  .btn-ai-retry {
+    align-self: flex-start; padding: 6px 14px;
+    border-radius: 6px; border: 1px solid #6e40c9; background: rgba(110,64,201,0.12);
+    color: #b392f0; font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-ai-retry:hover:not(:disabled) { background: rgba(110,64,201,0.25); }
+  .btn-ai-retry:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── 掷圣杯 ──────────────────────────────────────────────────────────────── */
+  .btn-bei { background: rgba(110,64,201,0.15); color: #b392f0; border: 1px solid #6e40c9; }
+  .btn-bei:hover { background: rgba(110,64,201,0.3); }
+
+  .bei-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.78); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: bei-fade 0.18s ease;
+  }
+  .bei-overlay.hidden { display: none; }
+  @keyframes bei-fade { from { opacity:0; } to { opacity:1; } }
+
+  .bei-modal {
+    background: var(--surface); border: 1px solid #6e40c9; border-radius: 14px;
+    padding: 28px 32px; max-width: 360px; width: calc(100% - 32px);
+    text-align: center; position: relative;
+    box-shadow: 0 0 40px rgba(110,64,201,0.25);
+  }
+  .bei-close {
+    position: absolute; top: 12px; right: 16px; background: none; border: none;
+    color: var(--text-muted); font-size: 1.1rem; cursor: pointer; line-height: 1;
+  }
+  .bei-close:hover { color: var(--text); }
+  .bei-title { font-size: 1.15rem; font-weight: 700; color: #b392f0; margin-bottom: 4px; }
+  .bei-subtitle { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 28px; }
+
+  .bei-cups { display: flex; gap: 48px; justify-content: center; margin-bottom: 28px; }
+  .bei-cup-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .bei-cup {
+    width: 60px; height: 34px; border: 2.5px solid #6e40c9;
+    transition: border-color 0.35s, background 0.35s;
+  }
+  .bei-cup.yin  { border-radius: 0 0 60px 60px; border-top: none;    background: rgba(110,64,201,0.08); }
+  .bei-cup.yang { border-radius: 60px 60px 0 0;  border-bottom: none; background: rgba(110,64,201,0.28); }
+  .bei-cup.c-sheng   { border-color: #56d364; }
+  .bei-cup.c-xiao    { border-color: #e3b341; }
+  .bei-cup.c-yin-bei { border-color: #f85149; }
+  .bei-cup-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; }
+
+  @keyframes bei-spin {
+    0%   { transform: rotate(0)      scale(1)    translateY(0); }
+    18%  { transform: rotate(140deg) scale(1.2)  translateY(-12px); }
+    42%  { transform: rotate(340deg) scale(0.88) translateY(-6px); }
+    68%  { transform: rotate(550deg) scale(1.1)  translateY(-3px); }
+    85%  { transform: rotate(670deg) scale(0.96) translateY(-1px); }
+    100% { transform: rotate(720deg) scale(1)    translateY(0); }
+  }
+  .bei-cup.spinning { animation: bei-spin 0.95s cubic-bezier(0.3,0,0.5,1) both; }
+
+  .bei-result { min-height: 68px; margin-bottom: 22px; }
+  .bei-result-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+  .bei-result-sub   { font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; }
+  .bei-result.sheng   .bei-result-title { color: #56d364; }
+  .bei-result.xiao    .bei-result-title { color: #e3b341; }
+  .bei-result.yin-bei .bei-result-title { color: #f85149; }
+
+  .bei-throw-btn {
+    background: rgba(110,64,201,0.2); border: 1px solid #6e40c9; color: #b392f0;
+    border-radius: 8px; font-size: 1rem; font-weight: 700; font-family: inherit;
+    padding: 10px 32px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+    margin-bottom: 16px; letter-spacing: 0.1em;
+  }
+  .bei-throw-btn:hover:not(:disabled) { background: rgba(110,64,201,0.38); }
+  .bei-throw-btn:active:not(:disabled) { transform: scale(0.96); }
+  .bei-throw-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .bei-footer { font-size: 0.73rem; color: var(--text-muted); font-style: italic; }
 </style>
 </head>
 <body>
@@ -337,9 +419,12 @@
         <label>下节课日期（自动计算）</label>
         <div id="next-class-display" class="week-badge" style="font-size:0.95rem;padding:9px 0;min-height:38px;display:flex;align-items:center;"></div>
       </div>
-      <div style="display:flex;align-items:flex-end;">
-        <button class="btn btn-blue" style="width:100%;justify-content:center;padding:10px" onclick="predict()">
+      <div style="display:flex;align-items:flex-end;gap:8px;">
+        <button class="btn btn-blue" style="flex:1;justify-content:center;padding:10px" onclick="predict()">
           ⚡ 开始预测
+        </button>
+        <button class="btn btn-bei" style="justify-content:center;padding:10px;white-space:nowrap" onclick="openBei()">
+          🪬 掷圣杯
         </button>
       </div>
     </div>
@@ -348,6 +433,30 @@
   <!-- Result -->
   <div id="result-area"></div>
 
+</div>
+
+<!-- 掷圣杯 Modal -->
+<div id="bei-overlay" class="bei-overlay hidden" onclick="beiOverlayClick(event)">
+  <div class="bei-modal">
+    <button class="bei-close" onclick="closeBei()">✕</button>
+    <div class="bei-title">🪬 掷圣杯</div>
+    <div class="bei-subtitle">心中默念：下节课会被点名吗？</div>
+    <div class="bei-cups">
+      <div class="bei-cup-wrap">
+        <div id="bei-cup-1" class="bei-cup yin"></div>
+        <div class="bei-cup-label" id="bei-label-1">—</div>
+      </div>
+      <div class="bei-cup-wrap">
+        <div id="bei-cup-2" class="bei-cup yin"></div>
+        <div class="bei-cup-label" id="bei-label-2">—</div>
+      </div>
+    </div>
+    <div id="bei-result" class="bei-result">
+      <div class="bei-result-sub">点击「掷杯」问神明</div>
+    </div>
+    <button id="bei-throw-btn" class="bei-throw-btn" onclick="throwBei()">掷 杯</button>
+    <div class="bei-footer">以上结果仅供参考，本工具不承担被点名后果</div>
+  </div>
 </div>
 
 <!-- Calendar Popup (shared) -->
@@ -371,7 +480,8 @@
 <script>
   // ── State ──────────────────────────────────────────────────────────────────
   let records       = [];
-  let rolledDates   = new Set(); // date strings where roll call happened
+  let rolledDates   = new Set();
+  let multiSelDates = new Set(); // multi-selected dates in history calendar
   let semesterStart = '2026-03-01';
   let classWeekdays = new Set(); // 0=Sun … 6=Sat; empty = no restriction
 
@@ -444,14 +554,13 @@
       hint.className = 'sem-hint';
     }
 
-    // Invalidate any selected dates that are now non-class days
-    ['h'].forEach(t => {
-      const dateStr = document.getElementById(t + '-date').value;
-      if (dateStr && classWeekdays.size > 0) {
-        const wd = new Date(dateStr + 'T00:00:00').getDay();
-        if (!classWeekdays.has(wd)) clearDateField(t);
+    // Remove multi-selected dates that are now non-class days
+    if (classWeekdays.size > 0) {
+      for (const d of [...multiSelDates]) {
+        if (!classWeekdays.has(new Date(d + 'T00:00:00').getDay())) multiSelDates.delete(d);
       }
-    });
+      updateMultiSelDisplay();
+    }
 
     rebuildRecords();
     refreshNextClassDisplay();
@@ -495,9 +604,26 @@
     document.getElementById('cal-popup').classList.remove('hidden');
     document.querySelectorAll('.date-field').forEach(f => f.classList.remove('active'));
     triggerEl.classList.add('active');
-    // Show legend when class days are configured
-    document.getElementById('cal-legend').textContent =
-      classWeekdays.size ? '─ 非上课日' : '';
+    updateCalLegend();
+  }
+
+  function updateCalLegend() {
+    const legend = document.getElementById('cal-legend');
+    if (calTarget === 'h') {
+      const n = multiSelDates.size;
+      legend.innerHTML = n > 0
+        ? `已选 ${n} 个 · <span style="cursor:pointer;text-decoration:underline;color:var(--text-muted)" onclick="clearMultiSel()">清空</span>`
+        : (classWeekdays.size ? '─ 非上课日 | 可多选' : '可多选');
+    } else {
+      legend.textContent = classWeekdays.size ? '─ 非上课日' : '';
+    }
+  }
+
+  function clearMultiSel() {
+    multiSelDates.clear();
+    updateMultiSelDisplay();
+    updateCalLegend();
+    calRender();
   }
 
   function positionCal(triggerEl) {
@@ -564,8 +690,11 @@
       if      (c.other)   cls += ' cal-other';
       else if (noClass)   cls += ' cal-no-class';
       else if (isFuture)  cls += ' cal-disabled';
-      if (!c.other && !noClass && !isFuture && c.dateStr === today)       cls += ' cal-today';
-      if (!c.other && !noClass && !isFuture && c.dateStr === selectedVal) cls += ' cal-selected';
+      if (!c.other && !noClass && !isFuture && c.dateStr === today) cls += ' cal-today';
+      if (!c.other && !noClass && !isFuture) {
+        if (calTarget === 'h' && multiSelDates.has(c.dateStr)) cls += ' cal-multi-sel';
+        else if (c.dateStr === selectedVal) cls += ' cal-selected';
+      }
       const click = (!c.other && !noClass && !isFuture) ? `onclick="calSelect('${c.dateStr}')"` : '';
       return `<div class="${cls}" ${click}>${c.day}</div>`;
     }).join('');
@@ -573,6 +702,14 @@
 
   function calSelect(dateStr) {
     if (!calTarget) return;
+    if (calTarget === 'h') {
+      if (multiSelDates.has(dateStr)) multiSelDates.delete(dateStr);
+      else multiSelDates.add(dateStr);
+      updateMultiSelDisplay();
+      updateCalLegend();
+      setTimeout(calRender, 0); // defer past click-bubble so detached target doesn't trigger closeCal
+      return;
+    }
     const d = new Date(dateStr + 'T00:00:00');
     document.getElementById(calTarget + '-date').value = dateStr;
     const dispEl = document.getElementById(calTarget + '-date-display');
@@ -580,6 +717,22 @@
     dispEl.classList.remove('ph');
     refreshWeekBadge(calTarget);
     closeCal();
+  }
+
+  function updateMultiSelDisplay() {
+    const n = multiSelDates.size;
+    const dispEl = document.getElementById('h-date-display');
+    const badge  = document.getElementById('h-week-badge');
+    if (n === 0) {
+      dispEl.textContent = '选择点名日期';
+      dispEl.classList.add('ph');
+      badge.textContent = '';
+    } else {
+      dispEl.textContent = `已选 ${n} 个日期`;
+      dispEl.classList.remove('ph');
+      badge.textContent = `点击"添加点名记录"确认`;
+      badge.className = 'week-badge';
+    }
   }
 
   document.addEventListener('click', e => {
@@ -608,16 +761,17 @@
   }
 
   function addRecord() {
-    const date = document.getElementById('h-date').value;
-    if (!date) { alert('请先选择日期'); return; }
-    if (!calcWeek(date)) { alert('所选日期早于开学日期，请检查设置'); return; }
-    if (classWeekdays.size > 0 && !classWeekdays.has(new Date(date + 'T00:00:00').getDay())) {
-      alert('所选日期不是上课日，请选择配置的上课星期'); return;
+    if (multiSelDates.size === 0) { alert('请先在日历中选择日期'); return; }
+    let skipped = 0;
+    for (const date of multiSelDates) {
+      if (!calcWeek(date)) { skipped++; continue; }
+      if (classWeekdays.size > 0 && !classWeekdays.has(new Date(date + 'T00:00:00').getDay())) { skipped++; continue; }
+      if (rolledDates.has(date)) { skipped++; continue; }
+      rolledDates.add(date);
     }
-    if (rolledDates.has(date)) { alert('该日期已记录为点名'); return; }
-    rolledDates.add(date);
+    multiSelDates.clear();
+    updateMultiSelDisplay();
     rebuildRecords();
-    clearDateField('h');
   }
 
   function deleteRecord(id) {
@@ -687,7 +841,7 @@
     if (!week) { alert('所选日期早于开学日期，请检查设置'); return; }
     const weekday = new Date(dateStr + 'T00:00:00').getDay();
 
-    if (records.length === 0) { renderResult(null, week, weekday, dateStr, null); return; }
+    if (records.length === 0) { lastPredictData = null; renderResult(null, week, weekday, dateStr, null); return; }
 
     const n        = records.length;
     const baseRate = conditionalRate(records);
@@ -733,12 +887,106 @@
 
     const prob = clamp(sigmoid(wSum / wTot) + semBoost + gapBoost, 0.02, 0.98);
 
-    renderResult(prob, week, weekday, dateStr, {
+    const factors = {
       base: baseRate, day: dayRate, recent: recentRate,
       daySamples: byDay.length,
       position: posRate, classPosIdx, posSamples,
       gap, gapBoost,
-    });
+    };
+    lastPredictData = {
+      records,
+      nextDate: dateStr,
+      nextWeek: week,
+      nextWeekday: WEEKDAYS[weekday],
+      statProb: prob,
+      semesterStart,
+    };
+    renderResult(prob, week, weekday, dateStr, factors);
+  }
+
+  // ── AI Analysis ───────────────────────────────────────────────────────────
+  let lastPredictData = null;
+  let aiRetryUsed = false;
+
+  async function runAI() {
+    if (!lastPredictData) return;
+    const body = document.getElementById('ai-card-body');
+    if (!body) return;
+    body.innerHTML = '<div class="empty-state" style="padding:30px 0">✨ AI 分析中，请稍候…</div>';
+
+    try {
+      const resp = await fetch('http://localhost:5000/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lastPredictData),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const prob = (typeof data.prob === 'number' && !isNaN(data.prob)) ? data.prob : 50;
+      renderAICard(prob, data.analysis);
+    } catch (e) {
+      const body2 = document.getElementById('ai-card-body');
+      if (!body2) return;
+      body2.innerHTML = `
+        <div class="verdict verdict-high" style="margin:0">
+          连接失败：请确认已运行 server.py（python server.py）<br>
+          <small style="opacity:0.7">${e.message}</small>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn-ai-retry" onclick="retryAI()" ${aiRetryUsed ? 'disabled' : ''}>
+            🔄 重新分析${aiRetryUsed ? '（已用完）' : ''}
+          </button>
+        </div>`;
+    }
+  }
+
+  function retryAI() {
+    if (aiRetryUsed) return;
+    aiRetryUsed = true;
+    runAI();
+  }
+
+  function renderAICard(prob, analysis) {
+    const body = document.getElementById('ai-card-body');
+    if (!body) return;
+    const pct   = Math.min(98, Math.max(2, Math.round(prob)));
+    const circ  = 2 * Math.PI * 45;
+    const color = pct >= 65 ? '#f85149' : pct >= 35 ? '#e3b341' : '#56d364';
+
+    let verdict, vClass;
+    if (pct >= 65) {
+      verdict = `⚠️ 高风险！AI 判断下节课 <strong>很可能点名</strong>，建议提前预习、不要旷课。`;
+      vClass = 'verdict-high';
+    } else if (pct >= 35) {
+      verdict = `🤔 中等风险。AI 判断老师 <strong>有可能点名</strong>，建议按时出勤。`;
+      vClass = 'verdict-medium';
+    } else {
+      verdict = `😊 低风险。AI 判断下节课 <strong>点名概率较低</strong>，但仍建议正常出勤。`;
+      vClass = 'verdict-low';
+    }
+
+    const escaped = analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+
+    body.innerHTML = `
+      <div class="prob-display">
+        <div class="prob-circle">
+          <svg width="110" height="110" viewBox="0 0 110 110">
+            <circle class="track" cx="55" cy="55" r="45"/>
+            <circle class="arc" cx="55" cy="55" r="45"
+              stroke="${color}"
+              stroke-dasharray="${(pct / 100 * circ).toFixed(1)} ${circ.toFixed(1)}"
+              stroke-dashoffset="0"/>
+          </svg>
+          <div class="prob-number" style="color:${color}">${pct}%<span>点名概率</span></div>
+        </div>
+        <div class="ai-text-panel">
+          <div class="ai-text-content">${escaped}</div>
+          <button class="btn-ai-retry" onclick="retryAI()" ${aiRetryUsed ? 'disabled' : ''}>
+            🔄 重新分析${aiRetryUsed ? '（已用完）' : ''}
+          </button>
+        </div>
+      </div>
+      <div class="verdict ${vClass}">${verdict}</div>`;
   }
 
   // ── Render result ──────────────────────────────────────────────────────────
@@ -857,7 +1105,102 @@
             ${classPosText}
           </div>
         </div>
+      </div>
+      <div class="result-card section-gap">
+        <div class="card-title">🤖 AI 大模型预测</div>
+        <div id="ai-card-body"><div class="empty-state" style="padding:30px 0">✨ AI 分析中，请稍候…</div></div>
       </div>`;
+
+    aiRetryUsed = false;
+    runAI();
+  }
+
+  // ── 掷圣杯 ────────────────────────────────────────────────────────────────
+  let beiThrowing = false;
+  let beiXiaoCount = 0;
+
+  function openBei() {
+    document.getElementById('bei-overlay').classList.remove('hidden');
+    beiThrowing = false;
+    beiXiaoCount = 0;
+    setCup(1, null); setCup(2, null);
+    document.getElementById('bei-result').className = 'bei-result';
+    document.getElementById('bei-result').innerHTML = '<div class="bei-result-sub">点击「掷杯」问神明</div>';
+    document.getElementById('bei-throw-btn').disabled = false;
+  }
+
+  function closeBei() {
+    document.getElementById('bei-overlay').classList.add('hidden');
+    beiThrowing = false;
+  }
+
+  function beiOverlayClick(e) {
+    if (e.target === document.getElementById('bei-overlay')) closeBei();
+  }
+
+  function setCup(n, state) {
+    const cup = document.getElementById(`bei-cup-${n}`);
+    const lbl = document.getElementById(`bei-label-${n}`);
+    cup.className = 'bei-cup';
+    if (!state) { cup.classList.add('yin'); lbl.textContent = '—'; return; }
+    cup.classList.add(state);
+    lbl.textContent = state === 'yin' ? '阴' : '阳';
+  }
+
+  function throwBei() {
+    if (beiThrowing) return;
+    beiThrowing = true;
+    document.getElementById('bei-throw-btn').disabled = true;
+
+    const result = document.getElementById('bei-result');
+    result.className = 'bei-result';
+    result.innerHTML = '<div class="bei-result-sub">掷杯中…</div>';
+
+    const c1 = document.getElementById('bei-cup-1');
+    const c2 = document.getElementById('bei-cup-2');
+    c1.className = 'bei-cup yin spinning';
+    c2.className = 'bei-cup yin spinning';
+
+    setTimeout(() => {
+      const r1 = Math.random() < 0.5 ? 'yin' : 'yang';
+      const r2 = Math.random() < 0.5 ? 'yin' : 'yang';
+
+      setCup(1, r1); setCup(2, r2);
+
+      let type, cls, title, sub;
+      if (r1 !== r2) {
+        type = 'sheng'; cls = 'sheng';
+        title = '🙏 圣杯';
+        sub = '神明允许，今日平安，安心上课';
+        c1.classList.add('c-sheng'); c2.classList.add('c-sheng');
+        beiXiaoCount = 0;
+        document.getElementById('bei-throw-btn').disabled = false;
+        beiThrowing = false;
+      } else if (r1 === 'yin') {
+        type = 'xiao'; cls = 'xiao';
+        beiXiaoCount++;
+        title = '😄 笑杯';
+        sub = beiXiaoCount > 1
+          ? `神明在笑，不算数，再掷…（第 ${beiXiaoCount} 次）`
+          : '神明在笑，不算数，再掷…';
+        c1.classList.add('c-xiao'); c2.classList.add('c-xiao');
+      } else {
+        type = 'yin-bei'; cls = 'yin-bei';
+        title = '⚡ 阴杯';
+        sub = '神明震怒，今日必被点名，好自为之';
+        c1.classList.add('c-yin-bei'); c2.classList.add('c-yin-bei');
+        beiXiaoCount = 0;
+        document.getElementById('bei-throw-btn').disabled = false;
+        beiThrowing = false;
+      }
+
+      result.className = `bei-result ${cls}`;
+      result.innerHTML = `<div class="bei-result-title">${title}</div><div class="bei-result-sub">${sub}</div>`;
+
+      if (type === 'xiao') {
+        setTimeout(() => { beiThrowing = false; throwBei(); }, 1600);
+      }
+    }, 980);
   }
 
   // ── Init ───────────────────────────────────────────────────────────────────
